@@ -183,53 +183,53 @@ const NestedJson = {
 };
 
 
-function convertJson(obj) {
-  const convertedJson = {
-    InfReq: {
-      InfReqId: "",
-      InfDefId: obj.ShpInfReqDef.Id,
-      InfDatEntRec: convertEntities(obj.ShpInfReqDef.Ent)
-    }
+function convertJson(NestedJson) {
+  const InfReq = {
+    InfReqId: "",
+    InfDefId: NestedJson.ShpInfReqDef.Id,
+    InfDatEntRec: [],
   };
-  
-  return convertedJson;
-}
 
-function convertEntities(entities) {
-  if (!entities || entities.length === 0) {
-    return ;
-  }
-  return entities.map(entity => {
-    const convertedEntity = {
-      "@InfDatEntId": entity.Id,
-      InfDatEntRec: convertEntities(entity.Ent)
+  for (const ent of NestedJson.ShpInfReqDef.Ent) {
+    const infDatEntRec = {
+      "@InfDatEntId": ent.Id,
+      InfDatEntRec: [],
     };
-    
-    if(entity.Att) {
-      convertedEntity.Att = convertAttributes(entity.Att);
+
+    for (const subEnt of ent.Ent) {
+      const infDatEntRecSub = {
+        "@InfDatEntId": subEnt.Id,
+        InfDatEntRec: [],
+      };
+
+      for (const att of subEnt.Ent[0].Att) {
+        const attJson = {
+          "@AttDefId": att.Id,
+          Val: "",
+        };
+        infDatEntRecSub.InfDatEntRec.push(attJson);
+      }
+
+      infDatEntRec.InfDatEntRec.push(infDatEntRecSub);
     }
-    return convertedEntity;
-  });
+
+    InfReq.InfDatEntRec.push(infDatEntRec);
+  }
+
+  return { InfReq };
 }
 
-function convertAttributes(attributes) {
-  return attributes.map(attribute => {
-    return {
-      "@AttDefId": attribute.Id,
-      Val: ""
-    };
-  });
-}
 
+ 
+    
 
 const result = convertJson(NestedJson)
 
 app.get('/', (req, res) => {
-  res.send(result);
+    res.send(result)
 })
 
 
-app.listen(3000, () => {
-  console.log('Server running on port 3000')
+app.listen(3300, () => {
+  console.log('Server running on port 3300')
 })
-

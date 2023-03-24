@@ -1,6 +1,5 @@
 const express = require('express');
-const app = express()
-
+const app = express();
 const NestedJson = {
   ShpInfReqDef: {
     Id: "7e035469-2576-4a41-af2e-1732a0f640c8",
@@ -183,53 +182,68 @@ const NestedJson = {
 };
 
 
-function convertJson(obj) {
-  const convertedJson = {
-    InfReq: {
-      InfReqId: "",
-      InfDefId: obj.ShpInfReqDef.Id,
-      InfDatEntRec: convertEntities(obj.ShpInfReqDef.Ent)
-    }
-  };
-  
-  return convertedJson;
-}
+//Renaming values
+const renameKeys = (jsonObj, keyMap) => {
+  return Object.fromEntries(
+    Object.entries(jsonObj).map(([oldKey, value]) => {
+      const newKey = keyMap[oldKey] || oldKey;
+      return [newKey, value];
+    })
+  )
+};
 
-function convertEntities(entities) {
-  if (!entities || entities.length === 0) {
-    return ;
+
+//addingVal
+function AddingVal(obj){
+  const entArr = obj["ShpInfReqDef"]["Ent"][0]["Ent"][0]["Ent"][0]["Att"];
+  for (let i = 0; i < entArr.length; i++){
+    entArr[i]["Val"] =''
   }
-  return entities.map(entity => {
-    const convertedEntity = {
-      "@InfDatEntId": entity.Id,
-      InfDatEntRec: convertEntities(entity.Ent)
-    };
-    
-    if(entity.Att) {
-      convertedEntity.Att = convertAttributes(entity.Att);
+  return obj
+}
+
+
+function OpsJson(obj) {
+
+  const keyMap = {
+    "ShpInfReqDef": "InfReq",
+    "Ent":"@InfDatEntId"
+  }
+  //Adding Val
+  AddingVal(obj)
+
+  for (const key in obj) {
+    if (key === 'Id') {
+      continue; // skip 'id' key
     }
-    return convertedEntity;
-  });
+
+    //remove extra Id
+    if (obj[key].DrvdFromShpInfReqDef !== undefined) {
+      delete obj[key].DrvdFromShpInfReqDef
+    }
+
+    if (typeof obj[key] === 'object') {
+        OpsJson(obj[key]); // call recursively
+        if (Object.keys(obj[key]).length === 0) {
+            delete obj[key]
+        }
+    } else {
+      delete obj[key]; // remove non-'id' key-value pair
+    }
+  }
+    return obj;  
 }
 
-function convertAttributes(attributes) {
-  return attributes.map(attribute => {
-    return {
-      "@AttDefId": attribute.Id,
-      Val: ""
-    };
-  });
-}
+const result = OpsJson(NestedJson);
 
 
-const result = convertJson(NestedJson)
 
 app.get('/', (req, res) => {
-  res.send(result);
+    res.send(result)
 })
 
 
 app.listen(3000, () => {
-  console.log('Server running on port 3000')
-})
+    console.log('Server running on port 3000')
+});
 

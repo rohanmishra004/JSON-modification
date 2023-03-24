@@ -1,6 +1,3 @@
-const express = require('express');
-const app = express()
-
 const NestedJson = {
   ShpInfReqDef: {
     Id: "7e035469-2576-4a41-af2e-1732a0f640c8",
@@ -10,9 +7,7 @@ const NestedJson = {
     LedOwnOrgn: {
       CtryCd: "EG",
     },
-    "DrvdFromShpInfReqDef" : {
-      "Id" : "d6074b99-8035-4587-9f32-33dda099d562"
-    },
+
     ApplyAllInd: false,
 
     PrsnDatSenstyClssLvl: "Low",
@@ -182,54 +177,65 @@ const NestedJson = {
   },
 };
 
+const newData = NestedJson[0]
 
-function convertJson(obj) {
-  const convertedJson = {
-    InfReq: {
-      InfReqId: "",
-      InfDefId: obj.ShpInfReqDef.Id,
-      InfDatEntRec: convertEntities(obj.ShpInfReqDef.Ent)
-    }
-  };
-  
-  return convertedJson;
-}
 
-function convertEntities(entities) {
-  if (!entities || entities.length === 0) {
-    return ;
+
+const AddingVal = (obj) => {
+  const entArr = obj["ShpInfReqDef"]["Ent"][0]["Ent"][0]["Att"];
+
+  for (let i = 0; i < entArr.length; i++) {
+    entArr[i]["Val"] = "";
   }
-  return entities.map(entity => {
-    const convertedEntity = {
-      "@InfDatEntId": entity.Id,
-      InfDatEntRec: convertEntities(entity.Ent)
-    };
-    
-    if(entity.Att) {
-      convertedEntity.Att = convertAttributes(entity.Att);
+
+  return obj;
+};
+
+const renameKeys = (jsonObj, keyMap) => {
+  return Object.fromEntries(
+    Object.entries(jsonObj).map(([oldKey, value]) => {
+      const newKey = keyMap[oldKey] || oldKey;
+      return [newKey, value];
+    })
+  );
+};
+
+const removeID = (obj) => {
+  for (const key in obj) {
+    if (key === "Id") {
+      delete obj[key];
+    } else if (typeof obj[key] === "object") {
+      removeID(obj[key]);
+      if (Object.keys(obj[key]).length === 0) {
+        delete obj[key];
+      }
     }
-    return convertedEntity;
-  });
-}
+  }
+  return obj;
+};
 
-function convertAttributes(attributes) {
-  return attributes.map(attribute => {
-    return {
-      "@AttDefId": attribute.Id,
-      Val: ""
-    };
-  });
-}
+const keyMap = {
+  "ShpInfReqDef": "InfReq",
+  "Ent": "@InfDatEntId",
+  "Att": "@AttDefId",
+  "Def": "InfDefId",
+};
 
+const OpsJson = async (newData) => {
+  try {
+    const res1 = await removeID(newData);
+    console.log("Result 1 was", res1);
 
-const result = convertJson(NestedJson)
+    const res2 = AddingVal(res1);
+    console.log("Result 2 was", res2);
 
-app.get('/', (req, res) => {
-  res.send(result);
-})
+    const res3 = renameKeys(res2, keyMap);
+    return res3;
+  } catch (error) {
+    console.log(error);
+  }
+};
 
-
-app.listen(3000, () => {
-  console.log('Server running on port 3000')
-})
-
+OpsJson(newData)
+  .then((data) => console.log(data))
+  .catch((error) => console.log(error));

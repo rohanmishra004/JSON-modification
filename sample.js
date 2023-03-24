@@ -1,5 +1,18 @@
-const express = require('express');
-const app = express()
+function renameKeys(obj, keyMap) {
+  return Object.keys(obj).reduce((acc, key) => {
+    const newKey = keyMap[key] || key;
+    const value = obj[key];
+
+    if (value && typeof value === "object") {
+      acc[newKey] = renameKeys(value, keyMap);
+    } else {
+      acc[newKey] = value;
+    }
+
+    return acc;
+  }, {});
+}
+
 
 const NestedJson = {
   ShpInfReqDef: {
@@ -10,9 +23,7 @@ const NestedJson = {
     LedOwnOrgn: {
       CtryCd: "EG",
     },
-    "DrvdFromShpInfReqDef" : {
-      "Id" : "d6074b99-8035-4587-9f32-33dda099d562"
-    },
+
     ApplyAllInd: false,
 
     PrsnDatSenstyClssLvl: "Low",
@@ -183,53 +194,9 @@ const NestedJson = {
 };
 
 
-function convertJson(obj) {
-  const convertedJson = {
-    InfReq: {
-      InfReqId: "",
-      InfDefId: obj.ShpInfReqDef.Id,
-      InfDatEntRec: convertEntities(obj.ShpInfReqDef.Ent)
-    }
-  };
-  
-  return convertedJson;
-}
+const keyMap = {
+  "ShpInfReqDef": "InfReq",
+  "Ent": "@InfDatEntId"
+};
 
-function convertEntities(entities) {
-  if (!entities || entities.length === 0) {
-    return ;
-  }
-  return entities.map(entity => {
-    const convertedEntity = {
-      "@InfDatEntId": entity.Id,
-      InfDatEntRec: convertEntities(entity.Ent)
-    };
-    
-    if(entity.Att) {
-      convertedEntity.Att = convertAttributes(entity.Att);
-    }
-    return convertedEntity;
-  });
-}
-
-function convertAttributes(attributes) {
-  return attributes.map(attribute => {
-    return {
-      "@AttDefId": attribute.Id,
-      Val: ""
-    };
-  });
-}
-
-
-const result = convertJson(NestedJson)
-
-app.get('/', (req, res) => {
-  res.send(result);
-})
-
-
-app.listen(3000, () => {
-  console.log('Server running on port 3000')
-})
-
+console.log(renameKeys(NestedJson,keyMap))
